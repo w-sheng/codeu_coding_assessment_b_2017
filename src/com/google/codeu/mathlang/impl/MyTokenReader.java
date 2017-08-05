@@ -15,7 +15,13 @@
 package com.google.codeu.mathlang.impl;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
+import com.google.codeu.mathlang.core.tokens.NameToken;
+import com.google.codeu.mathlang.core.tokens.NumberToken;
+import com.google.codeu.mathlang.core.tokens.StringToken;
+import com.google.codeu.mathlang.core.tokens.SymbolToken;
 import com.google.codeu.mathlang.core.tokens.Token;
 import com.google.codeu.mathlang.parsing.TokenReader;
 
@@ -27,20 +33,128 @@ import com.google.codeu.mathlang.parsing.TokenReader;
 // work with the test of the system.
 public final class MyTokenReader implements TokenReader {
 
-  public MyTokenReader(String source) {
-    // Your token reader will only be given a string for input. The string will
-    // contain the whole source (0 or more lines).
-  }
+	private StringBuilder token;
+	private String source;
+	private int at;
+	private ArrayList<String> symbols = new ArrayList<String>(Arrays.asList(";", "+", "-", "="));
 
-  @Override
-  public Token next() throws IOException {
-    // Most of your work will take place here. For every call to |next| you should
-    // return a token until you reach the end. When there are no more tokens, you
-    // should return |null| to signal the end of input.
+	public MyTokenReader(String source) {
+		// Your token reader will only be given a string for input. The string will
+		// contain the whole source (0 or more lines).
+		this.token = new StringBuilder();
+		this.source = source;
+		this.at = 0;
+	}
 
-    // If for any reason you detect an error in the input, you may throw an IOException
-    // which will stop all execution.
+	@Override
+	public Token next() throws IOException {
 
-    return null;
-  }
+		// skip leading whitespaces
+		while (remaining() > 0 && Character.isWhitespace(peek())) {
+			// ignore result if whitespace
+			read();
+		}
+		if (remaining() <= 0) {
+			return null;
+		} else if (peek() == '"') {
+			return readWithQuotes(); // create a StringToken
+		} else {
+			return readWithNoQuotes(); // create all other types of Tokens
+		}
+	}
+
+	private int remaining() {
+		return source.length() - at;
+	}
+
+	private char peek() throws IOException {
+		if (at < source.length()) {
+			return source.charAt(at);
+		} else {
+			throw new IndexOutOfBoundsException("This is outside of the source string.");
+		}
+	}	
+
+	private char read() throws IOException {
+		final char c = peek();
+		at += 1;
+		return c;
+	}	
+
+	private Token readWithNoQuotes() throws IOException {
+		token.setLength(0); // clear the token
+		while (remaining() > 0 && !Character.isWhitespace(peek())) {
+			token.append(read());
+		}
+		String tokenString = token.toString();
+
+		if (tokenString.length() > 1 && tokenString.endsWith(";")) {
+			tokenString = tokenString.substring(0, tokenString.length() - 1);
+			at -= 1;
+		} 
+		
+		// create NumberToken
+		if (isInteger(tokenString)) {
+			return new NumberToken(Double.parseDouble(tokenString));
+
+		// create SymbolToken
+		} else if (symbols.contains(tokenString)) {
+			return new SymbolToken(tokenString.charAt(0));
+
+		// create different types of Tokens
+		} else {
+			System.out.println(at);
+			int i = 0;
+			String ch = Character.toString(tokenString.charAt(i));
+
+			// create SymbolToken
+			if (symbols.contains(ch)) {
+				System.out.println("symbol: " + ch);
+				return new SymbolToken(ch.charAt(0));
+			}
+
+			// create NumberToken
+			if (isInteger(ch)) {
+				System.out.println("number: " + ch);
+				return new NumberToken(Double.parseDouble(ch));
+			}
+
+			// create NameToken
+			String nameToken = ch;
+			while (!symbols.contains(ch) && !isInteger(ch) && i < tokenString.length() - 1) {
+				i++;
+				ch = Character.toString(tokenString.charAt(i));
+				nameToken += ch;
+			}
+			// make sure NameToken does not include any other tokens in it
+			String lastChar = Character.toString(nameToken.charAt(nameToken.length() - 1));
+			if (symbols.contains(lastChar) || isInteger(lastChar)) {
+				nameToken = nameToken.substring(0, nameToken.length() - 1);
+			}
+
+			System.out.println(nameToken);
+			return new NameToken(nameToken);
+		}
+	}
+
+	private Token readWithQuotes() throws IOException {
+		token.setLength(0); // clear the token
+		if (read() != '"') {
+			throw new IOException("Strings must start with opening quotes!");
+		}
+		while(peek() != '"') {
+			token.append(read());
+		}
+		read(); // read closing quote that allows us to exit the loop
+		return new StringToken(token.toString());
+	}
+
+	public boolean isInteger(String s) {
+		try {
+			Integer.parseInt(s);
+			return true;
+		} catch (NumberFormatException ex) {
+			return false;
+		}
+	}
 }
