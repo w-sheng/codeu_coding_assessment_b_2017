@@ -83,6 +83,8 @@ public final class MyTokenReader implements TokenReader {
 
 	private Token readWithNoQuotes() throws IOException {
 		token.setLength(0); // clear the token
+
+		int start = at; // for reference
 		while (remaining() > 0 && !Character.isWhitespace(peek())) {
 			token.append(read());
 		}
@@ -92,47 +94,38 @@ public final class MyTokenReader implements TokenReader {
 			tokenString = tokenString.substring(0, tokenString.length() - 1);
 			at -= 1;
 		} 
+
+		String firstchar = Character.toString(tokenString.charAt(0));
 		
-		// create NumberToken
-		if (isInteger(tokenString)) {
-			return new NumberToken(Double.parseDouble(tokenString));
+		if (symbols.contains(firstchar)) { // create SymbolToken
+			
+			at = start + 1; // update at val to char after nameToken
+			return new SymbolToken(firstchar.charAt(0));
+		
+		} else 	if (isInteger(firstchar)) {	// create NumberToken
+			
+			at = start + 1; // update at val to char after nameToken
+			return new NumberToken(Double.parseDouble(firstchar));
 
-		// create SymbolToken
-		} else if (symbols.contains(tokenString)) {
-			return new SymbolToken(tokenString.charAt(0));
-
-		// create different types of Tokens
-		} else {
-			System.out.println(at);
+		} else { // create NameToken
+			
 			int i = 0;
 			String ch = Character.toString(tokenString.charAt(i));
 
-			// create SymbolToken
-			if (symbols.contains(ch)) {
-				System.out.println("symbol: " + ch);
-				return new SymbolToken(ch.charAt(0));
-			}
-
-			// create NumberToken
-			if (isInteger(ch)) {
-				System.out.println("number: " + ch);
-				return new NumberToken(Double.parseDouble(ch));
-			}
-
-			// create NameToken
 			String nameToken = ch;
 			while (!symbols.contains(ch) && !isInteger(ch) && i < tokenString.length() - 1) {
 				i++;
 				ch = Character.toString(tokenString.charAt(i));
 				nameToken += ch;
 			}
+
 			// make sure NameToken does not include any other tokens in it
 			String lastChar = Character.toString(nameToken.charAt(nameToken.length() - 1));
 			if (symbols.contains(lastChar) || isInteger(lastChar)) {
 				nameToken = nameToken.substring(0, nameToken.length() - 1);
 			}
 
-			System.out.println(nameToken);
+			at = start + nameToken.length(); // update at val to char after nameToken			
 			return new NameToken(nameToken);
 		}
 	}
